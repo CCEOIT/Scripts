@@ -22,11 +22,10 @@ $SyxsenseMSI   = Join-Path $PcPrepRoot 'syxsense.msi'
 $SentinelMSI   = Join-Path $PcPrepRoot 'sentinel.msi'
 $SentinelToken = 'eyJ1cmwiOiAiaHR0cHM6Ly91c2VhMS1wYXg4LWV4c3Auc2VudGluZWxvbmUubmV0IiwgInNpdGVfa2V5IjogIjU5Mjk4YThlZTNlMjRkZDYifQ=='
 
-# NOTE: Cisco folder uses "PC Prep" with a space, per the provided path
-$CiscoBase     = 'D:\PC Prep\cisco-secure-client-win-5.1.14.145-predeploy-k9'
+$CiscoBase     = 'D:\PC_Prep\cisco-secure-client-win-5.1.14.145-predeploy-k9'
 $CiscoVPN      = Join-Path $CiscoBase 'cisco-secure-client-win-5.1.14.145-core-vpn-predeploy-k9.msi'
 $CiscoUmbr     = Join-Path $CiscoBase 'cisco-secure-client-win-5.1.14.145-umbrella-predeploy-k9.msi'
-$OrgInfoSrc    = 'D:\PC Prep\OrgInfo.json'
+$OrgInfoSrc    = 'D:\PC_Prep\OrgInfo.json'
 $UmbrellaDest  = 'C:\ProgramData\Cisco\Cisco Secure Client\Umbrella'
 
 # -- Step engine --------------------------------------------------------------
