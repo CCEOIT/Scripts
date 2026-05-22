@@ -1,5 +1,5 @@
 #Requires -RunAsAdministrator
-# CenterState CEO — PC Prep Script
+# CenterState CEO - PC Prep Script
 # Place this file in D:\PC_Prep\ and launch via Launch.bat
 
 [CmdletBinding()]
@@ -9,7 +9,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# ── Configuration ─────────────────────────────────────────────────────────────
+# -- Configuration ------------------------------------------------------------
 $DownloadPath  = 'C:\Users\CEOIT\Downloads'
 $PcPrepRoot    = 'D:\PC_Prep'
 $LogFile       = "$DownloadPath\PCPrep_$(Get-Date -f 'yyyyMMdd_HHmmss').log"
@@ -29,7 +29,7 @@ $CiscoUmbr     = Join-Path $CiscoBase 'cisco-secure-client-win-5.1.14.145-umbrel
 $OrgInfoSrc    = 'D:\PC Prep\OrgInfo.json'
 $UmbrellaDest  = 'C:\ProgramData\Cisco\Cisco Secure Client\Umbrella'
 
-# ── Step engine ───────────────────────────────────────────────────────────────
+# -- Step engine --------------------------------------------------------------
 $Results = [ordered]@{}
 
 function Invoke-Step {
@@ -68,7 +68,7 @@ function Get-Download {
     param([string]$Url, [string]$OutFile)
     Write-Host "     Downloading: $(Split-Path $OutFile -Leaf)" -ForegroundColor DarkGray
     Invoke-WebRequest -Uri $Url -OutFile $OutFile -UseBasicParsing
-    if (-not (Test-Path $OutFile)) { throw "Download failed — file missing at $OutFile" }
+    if (-not (Test-Path $OutFile)) { throw "Download failed - file not found at: $OutFile" }
 }
 
 function Invoke-Winget {
@@ -78,11 +78,12 @@ function Invoke-Winget {
         --accept-package-agreements --accept-source-agreements 2>&1
     # 0 = success; -1978335189 (0x8A15002B) = already installed / no upgrade needed
     if ($LASTEXITCODE -notin @(0, -1978335189)) {
-        throw "winget install '$Id' failed (exit $LASTEXITCODE).`nOutput: $($output -join "`n")"
+        $outStr = $output -join "`n"
+        throw "winget install '$Id' failed (exit $LASTEXITCODE). Output: $outStr"
     }
 }
 
-# ── Pre-flight ────────────────────────────────────────────────────────────────
+# -- Pre-flight ---------------------------------------------------------------
 if (-not (Test-Path $DownloadPath)) {
     New-Item -Path $DownloadPath -ItemType Directory -Force | Out-Null
 }
@@ -92,10 +93,12 @@ Start-Transcript -Path $LogFile -Append | Out-Null
 $wlanSvc = Get-Service -Name 'WlanSvc' -ErrorAction SilentlyContinue
 if ($wlanSvc -and $wlanSvc.Status -ne 'Running') { Start-Service 'WlanSvc' }
 
-# ── Banner ────────────────────────────────────────────────────────────────────
-Write-Host "`n$('=' * 64)" -ForegroundColor Cyan
-Write-Host "  CenterState CEO  --  PC Prep Script  |  $(Get-Date -f 'yyyy-MM-dd HH:mm')" -ForegroundColor Cyan
-Write-Host "$('=' * 64)`n" -ForegroundColor Cyan
+# -- Banner -------------------------------------------------------------------
+$HR  = '=' * 64
+$now = Get-Date -f 'yyyy-MM-dd HH:mm'
+Write-Host "`n$HR" -ForegroundColor Cyan
+Write-Host "  CenterState CEO  --  PC Prep Script  |  $now" -ForegroundColor Cyan
+Write-Host "$HR`n" -ForegroundColor Cyan
 
 # =============================================================================
 # Step 1: Connect to WiFi
@@ -274,10 +277,10 @@ Invoke-Step '14. Dell Command Update -- Apply Updates' {
     if ($p.ExitCode -notin @(0, 1, 5)) { throw "dcu-cli.exe exited with code $($p.ExitCode)" }
 }
 
-# ── Final Summary ─────────────────────────────────────────────────────────────
-Write-Host "`n$('=' * 64)" -ForegroundColor Cyan
+# -- Final Summary ------------------------------------------------------------
+Write-Host "`n$HR" -ForegroundColor Cyan
 Write-Host '  FINAL SUMMARY' -ForegroundColor Cyan
-Write-Host "$('=' * 64)" -ForegroundColor Cyan
+Write-Host $HR -ForegroundColor Cyan
 
 $passed = 0; $failed = 0
 foreach ($entry in $Results.GetEnumerator()) {
@@ -293,10 +296,11 @@ foreach ($entry in $Results.GetEnumerator()) {
 }
 
 $summaryColor = if ($failed -eq 0) { 'Green' } else { 'Yellow' }
-Write-Host "$('─' * 64)" -ForegroundColor Cyan
+$hr2 = '-' * 64
+Write-Host $hr2 -ForegroundColor Cyan
 Write-Host ("  Passed: {0}   Failed: {1}" -f $passed, $failed) -ForegroundColor $summaryColor
 Write-Host ("  Log:    {0}" -f $LogFile) -ForegroundColor DarkGray
-Write-Host "$('=' * 64)`n" -ForegroundColor Cyan
+Write-Host "$HR`n" -ForegroundColor Cyan
 
 Stop-Transcript | Out-Null
 
