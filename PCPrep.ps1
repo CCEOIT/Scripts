@@ -30,7 +30,8 @@ $OrgInfoSrc    = 'D:\PC Prep\OrgInfo.json'
 $UmbrellaDest  = 'C:\ProgramData\Cisco\Cisco Secure Client\Umbrella'
 
 # -- Step engine --------------------------------------------------------------
-$Results = [ordered]@{}
+$Results  = [ordered]@{}
+$script:WUJob = $null
 
 function Invoke-Step {
     param([string]$Name, [scriptblock]$Action)
@@ -252,10 +253,13 @@ Invoke-Step '13. Windows Update' {
     Write-Host '     Installing PSWindowsUpdate module...' -ForegroundColor DarkGray
     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
     Install-Module -Name PSWindowsUpdate -Force -AllowClobber -Scope AllUsers | Out-Null
-    Import-Module PSWindowsUpdate -Force
-    Write-Host '     Scanning and installing updates (may take several minutes)...' -ForegroundColor DarkGray
-    Install-WindowsUpdate -AcceptAll -IgnoreReboot -Confirm:$false | Out-Null
-    Write-Host '     Windows Update scan complete.' -ForegroundColor DarkGray
+
+    Write-Host '     Starting Windows Update in the background...' -ForegroundColor DarkGray
+    $script:WUJob = Start-Job -ScriptBlock {
+        Import-Module PSWindowsUpdate -Force
+        Install-WindowsUpdate -AcceptAll -IgnoreReboot -Confirm:$false
+    }
+    Write-Host ("     Windows Update job started (ID: {0}) -- continuing script." -f $script:WUJob.Id) -ForegroundColor DarkYellow
 }
 
 # =============================================================================
@@ -277,6 +281,26 @@ Invoke-Step '14. Dell Command Update -- Apply Updates' {
         -Wait -PassThru
     # 0 = success, 1 = reboot required, 5 = no updates found
     if ($p.ExitCode -notin @(0, 1, 5)) { throw "dcu-cli.exe exited with code $($p.ExitCode)" }
+}
+
+# -- Wait for background Windows Update job -----------------------------------
+if ($null -ne $script:WUJob) {
+    Write-Host "`n  Waiting for Windows Update to finish (up to 45 min)..." -ForegroundColor Yellow
+    $completed = Wait-Job -Job $script:WUJob -Timeout 2700
+    $jobState  = $script:WUJob.State
+    Receive-Job -Job $script:WUJob | Out-Null
+    Remove-Job  -Job $script:WUJob -Force
+
+    if ($completed -and $jobState -eq 'Completed') {
+        $Results['13. Windows Update'] = 'PASSED'
+        Write-Host '  +-- [DONE] 13. Windows Update (background)' -ForegroundColor Green
+    } elseif (-not $completed) {
+        $Results['13. Windows Update'] = 'FAILED: Timed out after 45 minutes'
+        Write-Host '  +-- [FAIL] 13. Windows Update: timed out after 45 minutes' -ForegroundColor Red
+    } else {
+        $Results['13. Windows Update'] = "FAILED: Job ended in state '$jobState'"
+        Write-Host ("  +-- [FAIL] 13. Windows Update: job state = {0}" -f $jobState) -ForegroundColor Red
+    }
 }
 
 # -- Final Summary ------------------------------------------------------------
