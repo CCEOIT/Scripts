@@ -94,7 +94,7 @@ function Remove-AppIfPresent {
     )
     $app = $regPaths | ForEach-Object {
         Get-ItemProperty $_ -ErrorAction SilentlyContinue
-    } | Where-Object { $_.DisplayName -like "*$NamePattern*" } | Select-Object -First 1
+    } | Where-Object { $_.PSObject.Properties['DisplayName'] -and $_.DisplayName -like "*$NamePattern*" } | Select-Object -First 1
 
     if (-not $app) {
         Write-Host "     Not installed (skipping): $NamePattern" -ForegroundColor DarkGray
@@ -137,7 +137,7 @@ function Test-AppInstalled {
     )
     $found = $regPaths | ForEach-Object {
         Get-ItemProperty $_ -ErrorAction SilentlyContinue
-    } | Where-Object { $_.DisplayName -like "*$NamePattern*" } | Select-Object -First 1
+    } | Where-Object { $_.PSObject.Properties['DisplayName'] -and $_.DisplayName -like "*$NamePattern*" } | Select-Object -First 1
     return ($null -ne $found)
 }
 
@@ -236,6 +236,7 @@ Invoke-Step '03. Dell Command Update' {
     )
     $legacyDcu = $regPaths | ForEach-Object { Get-ItemProperty $_ -ErrorAction SilentlyContinue } |
         Where-Object {
+            $_.PSObject.Properties['DisplayName'] -and
             $_.DisplayName -like '*Dell Command*Update*' -and
             $_.DisplayName -notlike '*Universal*'
         } | Select-Object -First 1
@@ -297,7 +298,7 @@ Invoke-Step '06. Cisco Secure Client -- VPN' {
         'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
     )
     $vpnEntry = $regPaths | ForEach-Object { Get-ItemProperty $_ -ErrorAction SilentlyContinue } |
-        Where-Object { $_.DisplayName -like '*Cisco Secure Client*' -and $_.DisplayName -notlike '*Umbrella*' } |
+        Where-Object { $_.PSObject.Properties['DisplayName'] -and $_.DisplayName -like '*Cisco Secure Client*' -and $_.DisplayName -notlike '*Umbrella*' } |
         Select-Object -First 1
     if ($vpnEntry) {
         Write-Host "     Already installed: $($vpnEntry.DisplayName)" -ForegroundColor DarkGray
