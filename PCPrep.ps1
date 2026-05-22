@@ -216,7 +216,7 @@ Invoke-Step '08. Umbrella OrgInfo.json config' {
 # Step 9: Adobe Acrobat Reader
 # =============================================================================
 Invoke-Step '09. Adobe Acrobat Reader' {
-    Invoke-Winget 'Adobe.Acrobat.Reader.64-bit'
+    Invoke-Winget 'Adobe.Acrobat.Reader.64-bit' -Source 'winget'
 }
 
 # =============================================================================
@@ -232,7 +232,7 @@ Invoke-Step '10. Zoom' {
 # Step 11: Slack
 # =============================================================================
 Invoke-Step '11. Slack' {
-    Invoke-Winget 'SlackTechnologies.Slack'
+    Invoke-Winget 'SlackTechnologies.Slack' -Source 'winget'
 }
 
 # =============================================================================
