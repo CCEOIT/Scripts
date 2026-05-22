@@ -73,10 +73,11 @@ function Get-Download {
 }
 
 function Invoke-Winget {
-    param([string]$Id, [string]$Source = '')
+    param([string]$Id, [string]$Source = '', [string]$Scope = 'machine')
     Write-Host "     winget install $Id" -ForegroundColor DarkGray
-    $wArgs = @('install', '--id', $Id, '--silent', '--scope', 'machine',
+    $wArgs = @('install', '--id', $Id, '--silent',
                '--accept-package-agreements', '--accept-source-agreements')
+    if ($Scope)  { $wArgs += '--scope';  $wArgs += $Scope  }
     if ($Source) { $wArgs += '--source'; $wArgs += $Source }
     $output = & winget @wArgs 2>&1
     # 0 = success; -1978335189 (0x8A15002B) = already installed / no upgrade needed
@@ -363,7 +364,7 @@ Invoke-Step '11. Zoom (64-bit)' {
 # 12. Slack
 # =============================================================================
 Invoke-Step '12. Slack' {
-    Invoke-Winget 'SlackTechnologies.Slack' -Source 'winget'
+    Invoke-Winget 'SlackTechnologies.Slack' -Source 'winget' -Scope 'user'
 }
 
 # =============================================================================
