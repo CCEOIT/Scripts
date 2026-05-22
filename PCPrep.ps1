@@ -72,10 +72,12 @@ function Get-Download {
 }
 
 function Invoke-Winget {
-    param([string]$Id)
+    param([string]$Id, [string]$Source = '')
     Write-Host "     winget install $Id" -ForegroundColor DarkGray
-    $output = & winget install --id $Id --silent --scope machine `
-        --accept-package-agreements --accept-source-agreements 2>&1
+    $args = @('install', '--id', $Id, '--silent', '--scope', 'machine',
+              '--accept-package-agreements', '--accept-source-agreements')
+    if ($Source) { $args += '--source'; $args += $Source }
+    $output = & winget @args 2>&1
     # 0 = success; -1978335189 (0x8A15002B) = already installed / no upgrade needed
     if ($LASTEXITCODE -notin @(0, -1978335189)) {
         $outStr = $output -join "`n"
@@ -167,7 +169,7 @@ Invoke-Step '02. .NET 8 Desktop Runtime' {
 # Step 3: Dell Command Update
 # =============================================================================
 Invoke-Step '03. Dell Command Update' {
-    Invoke-Winget 'Dell.CommandUpdate.Universal'
+    Invoke-Winget 'Dell.CommandUpdate.Universal' -Source 'winget'
 }
 
 # =============================================================================
