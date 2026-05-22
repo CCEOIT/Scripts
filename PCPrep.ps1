@@ -94,7 +94,8 @@ function Remove-AppIfPresent {
     )
     $app = $regPaths | ForEach-Object {
         Get-ItemProperty $_ -ErrorAction SilentlyContinue
-    } | Where-Object { $_.PSObject.Properties['DisplayName'] -and $_.DisplayName -like "*$NamePattern*" } | Select-Object -First 1
+    } | Where-Object { $_.PSObject.Properties['DisplayName'] -and $_.DisplayName -like "*$NamePattern*" } |
+        Select-Object -First 1
 
     if (-not $app) {
         Write-Host "     Not installed (skipping): $NamePattern" -ForegroundColor DarkGray
@@ -103,7 +104,6 @@ function Remove-AppIfPresent {
 
     Write-Host "     Removing: $($app.DisplayName)" -ForegroundColor DarkGray
 
-    # Prefer GUID-based MSI uninstall
     if ($app.PSChildName -match '^\{') {
         $p = Start-Process 'msiexec.exe' `
             -ArgumentList "/x `"$($app.PSChildName)`" /quiet /norestart" -Wait -PassThru
@@ -113,7 +113,6 @@ function Remove-AppIfPresent {
         return
     }
 
-    # Fall back to recorded uninstall string
     $cmd = if ($app.QuietUninstallString) { $app.QuietUninstallString } else { $app.UninstallString }
     if (-not $cmd) { throw "No uninstall string found for '$($app.DisplayName)'" }
     if ($cmd -imatch 'msiexec' -and $cmd -notmatch '/quiet') { $cmd += ' /quiet /norestart' }
@@ -137,7 +136,8 @@ function Test-AppInstalled {
     )
     $found = $regPaths | ForEach-Object {
         Get-ItemProperty $_ -ErrorAction SilentlyContinue
-    } | Where-Object { $_.PSObject.Properties['DisplayName'] -and $_.DisplayName -like "*$NamePattern*" } | Select-Object -First 1
+    } | Where-Object { $_.PSObject.Properties['DisplayName'] -and $_.DisplayName -like "*$NamePattern*" } |
+        Select-Object -First 1
     return ($null -ne $found)
 }
 
@@ -210,9 +210,19 @@ Invoke-Step '01. Connect to WiFi' {
 }
 
 # =============================================================================
-# 02. .NET 8 Desktop Runtime
+# 02. Power and Sleep Settings
 # =============================================================================
-Invoke-Step '02. .NET 8 Desktop Runtime' {
+Invoke-Step '02. Power and Sleep Settings' {
+    Write-Host '     Plugged in: sleep after 3 hours' -ForegroundColor DarkGray
+    powercfg /change standby-timeout-ac 180
+    Write-Host '     On battery: sleep after 15 minutes' -ForegroundColor DarkGray
+    powercfg /change standby-timeout-dc 15
+}
+
+# =============================================================================
+# 03. .NET 8 Desktop Runtime
+# =============================================================================
+Invoke-Step '03. .NET 8 Desktop Runtime' {
     $runtimeDir = Join-Path $env:ProgramFiles 'dotnet\shared\Microsoft.WindowsDesktop.App'
     $v8 = Get-ChildItem $runtimeDir -ErrorAction SilentlyContinue |
           Where-Object { $_.Name -like '8.*' } | Select-Object -First 1
@@ -226,9 +236,9 @@ Invoke-Step '02. .NET 8 Desktop Runtime' {
 }
 
 # =============================================================================
-# 03. Dell Command Update (install)
+# 04. Dell Command Update (install)
 # =============================================================================
-Invoke-Step '03. Dell Command Update' {
+Invoke-Step '04. Dell Command Update' {
     # Remove any legacy (non-Universal) version -- it causes winget to hang
     $regPaths = @(
         'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
@@ -266,11 +276,11 @@ Invoke-Step '03. Dell Command Update' {
 }
 
 # =============================================================================
-# 04. Remove Dell SupportAssist bloatware
-#     More specific patterns removed first so the broad "SupportAssist" pass
-#     only catches the main app if it is still present.
+# 05. Remove Dell SupportAssist Apps
+#     More specific patterns removed first so the broad pass only catches
+#     the main app if it is still present.
 # =============================================================================
-Invoke-Step '04. Remove Dell SupportAssist Apps' {
+Invoke-Step '05. Remove Dell SupportAssist Apps' {
     Remove-AppIfPresent 'SupportAssist Remediation'
     Remove-AppIfPresent 'SupportAssist OS Recovery Plugin'
     Remove-AppIfPresent 'Dell SupportAssist'
@@ -278,9 +288,9 @@ Invoke-Step '04. Remove Dell SupportAssist Apps' {
 }
 
 # =============================================================================
-# 05. Syxsense
+# 06. Syxsense
 # =============================================================================
-Invoke-Step '05. Syxsense' {
+Invoke-Step '06. Syxsense' {
     if (Test-AppInstalled 'Syxsense') {
         Write-Host '     Already installed: Syxsense' -ForegroundColor DarkGray
         return
@@ -289,10 +299,9 @@ Invoke-Step '05. Syxsense' {
 }
 
 # =============================================================================
-# 06. Cisco Secure Client -- VPN (AnyConnect)
+# 07. Cisco Secure Client -- VPN (AnyConnect)
 # =============================================================================
-Invoke-Step '06. Cisco Secure Client -- VPN' {
-    # Check for VPN core specifically -- exclude Umbrella-only entries
+Invoke-Step '07. Cisco Secure Client -- VPN' {
     $regPaths = @(
         'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
         'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
@@ -308,9 +317,9 @@ Invoke-Step '06. Cisco Secure Client -- VPN' {
 }
 
 # =============================================================================
-# 07. Cisco Secure Client -- Umbrella
+# 08. Cisco Secure Client -- Umbrella
 # =============================================================================
-Invoke-Step '07. Cisco Secure Client -- Umbrella' {
+Invoke-Step '08. Cisco Secure Client -- Umbrella' {
     if (Test-AppInstalled 'Umbrella Roaming') {
         Write-Host '     Already installed: Cisco Umbrella Roaming Security' -ForegroundColor DarkGray
         return
@@ -319,9 +328,9 @@ Invoke-Step '07. Cisco Secure Client -- Umbrella' {
 }
 
 # =============================================================================
-# 08. Deploy Umbrella OrgInfo.json
+# 09. Deploy Umbrella OrgInfo.json
 # =============================================================================
-Invoke-Step '08. Umbrella OrgInfo.json config' {
+Invoke-Step '09. Umbrella OrgInfo.json config' {
     if (-not (Test-Path $OrgInfoSrc)) { throw "Config file not found: $OrgInfoSrc" }
     if (-not (Test-Path $UmbrellaDest)) {
         New-Item -Path $UmbrellaDest -ItemType Directory -Force | Out-Null
@@ -331,53 +340,58 @@ Invoke-Step '08. Umbrella OrgInfo.json config' {
 }
 
 # =============================================================================
-# 09. Adobe Acrobat Reader
+# 10. Adobe Acrobat Reader
 # =============================================================================
-Invoke-Step '09. Adobe Acrobat Reader' {
+Invoke-Step '10. Adobe Acrobat Reader' {
     Invoke-Winget 'Adobe.Acrobat.Reader.64-bit' -Source 'winget'
 }
 
 # =============================================================================
-# 10. Zoom
+# 11. Zoom (64-bit)
 # =============================================================================
-Invoke-Step '10. Zoom' {
+Invoke-Step '11. Zoom (64-bit)' {
     if (Test-AppInstalled 'Zoom') {
         Write-Host '     Already installed: Zoom' -ForegroundColor DarkGray
         return
     }
-    $installer = "$DownloadPath\ZoomInstallerFull.exe"
-    Get-Download 'https://zoom.us/client/latest/ZoomInstallerFull.exe' $installer
+    $installer = "$DownloadPath\ZoomInstallerFull_x64.exe"
+    Get-Download 'https://zoom.us/client/latest/ZoomInstallerFull.exe?archType=x64' $installer
     Install-Exe $installer '/quiet /norestart'
 }
 
 # =============================================================================
-# 11. Slack
+# 12. Slack
 # =============================================================================
-Invoke-Step '11. Slack' {
+Invoke-Step '12. Slack' {
     Invoke-Winget 'SlackTechnologies.Slack' -Source 'winget'
 }
 
 # =============================================================================
-# 12. Microsoft Teams
+# 13. Microsoft Teams
 # =============================================================================
-Invoke-Step '12. Microsoft Teams' {
+Invoke-Step '13. Microsoft Teams' {
     Invoke-Winget 'Microsoft.Teams' -Source 'winget'
 }
 
 # =============================================================================
-# 13. Join Domain
+# 14. Join Domain
 # =============================================================================
-Invoke-Step "13. Join Domain ($DomainName)" {
+Invoke-Step "14. Join Domain ($DomainName)" {
+    $cs = Get-WmiObject -Class Win32_ComputerSystem
+    if ($cs.PartOfDomain -and $cs.Domain -ieq $DomainName) {
+        Write-Host "     Already a member of $DomainName -- skipping." -ForegroundColor DarkGray
+        return
+    }
     Write-Host '     A credential dialog will appear -- enter domain admin credentials.' -ForegroundColor DarkGray
     $cred = Get-Credential -Message "Enter domain admin credentials for $DomainName"
     Add-Computer -DomainName $DomainName -Credential $cred -ErrorAction Stop
-    Write-Host '     Domain join staged. A reboot is required to finalize.' -ForegroundColor DarkYellow
+    Write-Host '     Domain join staged. Reboot required to finalize.' -ForegroundColor DarkYellow
 }
 
 # =============================================================================
-# 14. Windows Update (background job -- script continues to step 15)
+# 15. Windows Update (background job -- script continues to step 16)
 # =============================================================================
-Invoke-Step '14. Windows Update' {
+Invoke-Step '15. Windows Update' {
     Write-Host '     Installing PSWindowsUpdate module...' -ForegroundColor DarkGray
     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
     Install-Module -Name PSWindowsUpdate -Force -AllowClobber -Scope AllUsers | Out-Null
@@ -391,9 +405,9 @@ Invoke-Step '14. Windows Update' {
 }
 
 # =============================================================================
-# 15. Dell Command Update -- Apply Driver Updates
+# 16. Dell Command Update -- Apply Driver Updates
 # =============================================================================
-Invoke-Step '15. Dell Command Update -- Apply Updates' {
+Invoke-Step '16. Dell Command Update -- Apply Updates' {
     $dcuCli = @(
         'C:\Program Files\Dell\CommandUpdate\dcu-cli.exe',
         'C:\Program Files (x86)\Dell\CommandUpdate\dcu-cli.exe'
@@ -412,9 +426,9 @@ Invoke-Step '15. Dell Command Update -- Apply Updates' {
 }
 
 # =============================================================================
-# 16. Sentinel One (installed last so it does not flag earlier install activity)
+# 17. Sentinel One (installed last so it does not flag earlier install activity)
 # =============================================================================
-Invoke-Step '16. Sentinel One' {
+Invoke-Step '17. Sentinel One' {
     if ((Get-Service 'SentinelAgent' -ErrorAction SilentlyContinue) -or (Test-AppInstalled 'Sentinel Agent')) {
         Write-Host '     Already installed: Sentinel One' -ForegroundColor DarkGray
         return
@@ -431,14 +445,14 @@ if ($null -ne $script:WUJob) {
     Remove-Job  -Job $script:WUJob -Force
 
     if ($completed -and $jobState -eq 'Completed') {
-        $Results['14. Windows Update'] = 'PASSED'
-        Write-Host '  +-- [DONE] 14. Windows Update (background)' -ForegroundColor Green
+        $Results['15. Windows Update'] = 'PASSED'
+        Write-Host '  +-- [DONE] 15. Windows Update (background)' -ForegroundColor Green
     } elseif (-not $completed) {
-        $Results['14. Windows Update'] = 'FAILED: Timed out after 45 minutes'
-        Write-Host '  +-- [FAIL] 14. Windows Update: timed out after 45 minutes' -ForegroundColor Red
+        $Results['15. Windows Update'] = 'FAILED: Timed out after 45 minutes'
+        Write-Host '  +-- [FAIL] 15. Windows Update: timed out after 45 minutes' -ForegroundColor Red
     } else {
-        $Results['14. Windows Update'] = "FAILED: Job ended in state '$jobState'"
-        Write-Host ("  +-- [FAIL] 14. Windows Update: job state = {0}" -f $jobState) -ForegroundColor Red
+        $Results['15. Windows Update'] = "FAILED: Job ended in state '$jobState'"
+        Write-Host ("  +-- [FAIL] 15. Windows Update: job state = {0}" -f $jobState) -ForegroundColor Red
     }
 }
 
@@ -469,10 +483,8 @@ Write-Host "$HR`n" -ForegroundColor Cyan
 
 Stop-Transcript | Out-Null
 
-Write-Host 'IMPORTANT: A reboot is required to finalize the domain join and pending updates.' -ForegroundColor Yellow
-$ans = Read-Host 'Reboot now? [Y/N]'
-if ($ans -match '^[Yy]') {
-    Write-Host 'Rebooting in 5 seconds...' -ForegroundColor Yellow
-    Start-Sleep -Seconds 5
-    Restart-Computer -Force
-}
+# -- Timed reboot -------------------------------------------------------------
+$rebootSecs = 120
+Write-Host "Setup complete. This computer will reboot in $rebootSecs seconds." -ForegroundColor Yellow
+Write-Host "To cancel:  Open a command prompt and run  shutdown /a" -ForegroundColor DarkGray
+shutdown.exe /r /t $rebootSecs /c "PC Prep complete - rebooting to finalize domain join and updates."
