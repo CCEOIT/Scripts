@@ -230,6 +230,38 @@ Invoke-Step '02. .NET 8 Desktop Runtime' {
 # 03. Dell Command Update (install)
 # =============================================================================
 Invoke-Step '03. Dell Command Update' {
+    # Remove any legacy (non-Universal) version -- it causes winget to hang
+    $regPaths = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+    $legacyDcu = $regPaths | ForEach-Object { Get-ItemProperty $_ -ErrorAction SilentlyContinue } |
+        Where-Object {
+            $_.DisplayName -like '*Dell Command*Update*' -and
+            $_.DisplayName -notlike '*Universal*'
+        } | Select-Object -First 1
+
+    if ($legacyDcu) {
+        Write-Host "     Found legacy version -- removing: $($legacyDcu.DisplayName)" -ForegroundColor DarkGray
+        if ($legacyDcu.PSChildName -match '^\{') {
+            $p = Start-Process 'msiexec.exe' `
+                -ArgumentList "/x `"$($legacyDcu.PSChildName)`" /quiet /norestart" -Wait -PassThru
+            if ($p.ExitCode -notin @(0, 3010, 1605)) { throw "Legacy removal exited $($p.ExitCode)" }
+        } else {
+            $cmd = if ($legacyDcu.QuietUninstallString) { $legacyDcu.QuietUninstallString } else { $legacyDcu.UninstallString }
+            if (-not $cmd) { throw "No uninstall string found for $($legacyDcu.DisplayName)" }
+            if ($cmd -match '^"([^"]+)"\s*(.*)$') {
+                $p = Start-Process -FilePath $Matches[1] -ArgumentList $Matches[2] -Wait -PassThru
+            } else {
+                $p = Start-Process -FilePath $cmd -Wait -PassThru
+            }
+            if ($p.ExitCode -notin @(0, 3010, 1605)) { throw "Legacy removal exited $($p.ExitCode)" }
+        }
+        Write-Host '     Legacy version removed.' -ForegroundColor DarkGray
+    } else {
+        Write-Host '     No legacy version found.' -ForegroundColor DarkGray
+    }
+
     Invoke-Winget 'Dell.CommandUpdate.Universal' -Source 'winget'
 }
 
