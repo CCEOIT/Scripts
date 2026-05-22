@@ -55,7 +55,8 @@ function Install-MSI {
     $argList = "/i `"$Path`" /quiet /norestart"
     if ($ExtraArgs) { $argList += " $ExtraArgs" }
     $p = Start-Process 'msiexec.exe' -ArgumentList $argList -Wait -PassThru
-    if ($p.ExitCode -notin @(0, 3010)) { throw "msiexec.exe exited with code $($p.ExitCode)" }
+    # 1638 = a higher-version product is already installed
+    if ($p.ExitCode -notin @(0, 3010, 1638)) { throw "msiexec.exe exited with code $($p.ExitCode)" }
 }
 
 function Install-Exe {
@@ -127,6 +128,18 @@ function Remove-AppIfPresent {
         throw "Uninstall exited $($p.ExitCode) for '$($app.DisplayName)'"
     }
     Write-Host "     Removed: $($app.DisplayName)" -ForegroundColor DarkGray
+}
+
+function Test-AppInstalled {
+    param([string]$NamePattern)
+    $regPaths = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+    $found = $regPaths | ForEach-Object {
+        Get-ItemProperty $_ -ErrorAction SilentlyContinue
+    } | Where-Object { $_.DisplayName -like "*$NamePattern*" } | Select-Object -First 1
+    return ($null -ne $found)
 }
 
 # -- Pre-flight ---------------------------------------------------------------
@@ -201,6 +214,13 @@ Invoke-Step '01. Connect to WiFi' {
 # 02. .NET 8 Desktop Runtime
 # =============================================================================
 Invoke-Step '02. .NET 8 Desktop Runtime' {
+    $runtimeDir = Join-Path $env:ProgramFiles 'dotnet\shared\Microsoft.WindowsDesktop.App'
+    $v8 = Get-ChildItem $runtimeDir -ErrorAction SilentlyContinue |
+          Where-Object { $_.Name -like '8.*' } | Select-Object -First 1
+    if ($v8) {
+        Write-Host "     Already installed: .NET Desktop Runtime $($v8.Name)" -ForegroundColor DarkGray
+        return
+    }
     $installer = "$DownloadPath\dotnet8-desktop-runtime.exe"
     Get-Download 'https://aka.ms/dotnet/8.0/windowsdesktop-runtime-win-x64.exe' $installer
     Install-Exe $installer '/install /quiet /norestart'
@@ -229,6 +249,10 @@ Invoke-Step '04. Remove Dell SupportAssist Apps' {
 # 05. Syxsense
 # =============================================================================
 Invoke-Step '05. Syxsense' {
+    if (Test-AppInstalled 'Syxsense') {
+        Write-Host '     Already installed: Syxsense' -ForegroundColor DarkGray
+        return
+    }
     Install-MSI $SyxsenseMSI
 }
 
@@ -236,6 +260,18 @@ Invoke-Step '05. Syxsense' {
 # 06. Cisco Secure Client -- VPN (AnyConnect)
 # =============================================================================
 Invoke-Step '06. Cisco Secure Client -- VPN' {
+    # Check for VPN core specifically -- exclude Umbrella-only entries
+    $regPaths = @(
+        'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*',
+        'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*'
+    )
+    $vpnEntry = $regPaths | ForEach-Object { Get-ItemProperty $_ -ErrorAction SilentlyContinue } |
+        Where-Object { $_.DisplayName -like '*Cisco Secure Client*' -and $_.DisplayName -notlike '*Umbrella*' } |
+        Select-Object -First 1
+    if ($vpnEntry) {
+        Write-Host "     Already installed: $($vpnEntry.DisplayName)" -ForegroundColor DarkGray
+        return
+    }
     Install-MSI $CiscoVPN
 }
 
@@ -243,6 +279,10 @@ Invoke-Step '06. Cisco Secure Client -- VPN' {
 # 07. Cisco Secure Client -- Umbrella
 # =============================================================================
 Invoke-Step '07. Cisco Secure Client -- Umbrella' {
+    if (Test-AppInstalled 'Umbrella Roaming') {
+        Write-Host '     Already installed: Cisco Umbrella Roaming Security' -ForegroundColor DarkGray
+        return
+    }
     Install-MSI $CiscoUmbr
 }
 
@@ -269,6 +309,10 @@ Invoke-Step '09. Adobe Acrobat Reader' {
 # 10. Zoom
 # =============================================================================
 Invoke-Step '10. Zoom' {
+    if (Test-AppInstalled 'Zoom') {
+        Write-Host '     Already installed: Zoom' -ForegroundColor DarkGray
+        return
+    }
     $installer = "$DownloadPath\ZoomInstallerFull.exe"
     Get-Download 'https://zoom.us/client/latest/ZoomInstallerFull.exe' $installer
     Install-Exe $installer '/quiet /norestart'
@@ -339,6 +383,10 @@ Invoke-Step '15. Dell Command Update -- Apply Updates' {
 # 16. Sentinel One (installed last so it does not flag earlier install activity)
 # =============================================================================
 Invoke-Step '16. Sentinel One' {
+    if ((Get-Service 'SentinelAgent' -ErrorAction SilentlyContinue) -or (Test-AppInstalled 'Sentinel Agent')) {
+        Write-Host '     Already installed: Sentinel One' -ForegroundColor DarkGray
+        return
+    }
     Install-MSI $SentinelMSI "SITE_TOKEN=`"$SentinelToken`""
 }
 
