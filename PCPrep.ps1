@@ -421,8 +421,13 @@ Invoke-Step '16. Dell Command Update -- Apply Updates' {
     $p = Start-Process -FilePath $dcuCli `
         -ArgumentList '/applyUpdates -autoSuspendBitLocker=enable -silent' `
         -Wait -PassThru
-    # 0 = success, 1 = reboot required, 5 = no updates found
-    if ($p.ExitCode -notin @(0, 1, 5)) { throw "dcu-cli.exe exited with code $($p.ExitCode)" }
+    # 0 = success, 1 = reboot required after updates, 5 = no updates found
+    # 3003 = a system restart is pending (from Windows Update etc.) -- DCU will
+    #        apply driver updates on the next boot; this is expected and fine
+    if ($p.ExitCode -notin @(0, 1, 5, 3003)) { throw "dcu-cli.exe exited with code $($p.ExitCode)" }
+    if ($p.ExitCode -eq 3003) {
+        Write-Host '     Note: a reboot is pending -- Dell driver updates will complete after restart.' -ForegroundColor DarkYellow
+    }
 }
 
 # =============================================================================
