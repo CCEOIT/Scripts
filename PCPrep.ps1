@@ -389,9 +389,52 @@ Invoke-Step "14. Join Domain ($DomainName)" {
 }
 
 # =============================================================================
-# 15. Windows Update (background job -- script continues to step 16)
+# 15. Set Desktop Wallpaper for All Users
 # =============================================================================
-Invoke-Step '15. Windows Update' {
+Invoke-Step '15. Set Desktop Wallpaper' {
+    $wallSrc  = 'D:\PC_Prep\CenterstateCEO_LOGO.png'
+    $wallDest = 'C:\Windows\Web\Wallpaper\CenterstateCEO_LOGO.png'
+
+    if (-not (Test-Path $wallSrc)) { throw "Wallpaper file not found: $wallSrc" }
+
+    # Copy to a system path readable by all user accounts
+    Copy-Item -Path $wallSrc -Destination $wallDest -Force
+
+    # Machine-level policy -- enforces wallpaper for all existing and future users
+    $polPath = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System'
+    if (-not (Test-Path $polPath)) { New-Item -Path $polPath -Force | Out-Null }
+    Set-ItemProperty -Path $polPath -Name 'Wallpaper'      -Value $wallDest -Type String
+    Set-ItemProperty -Path $polPath -Name 'WallpaperStyle' -Value '10'      -Type String
+
+    # Default user profile -- domain users will receive it on first logon
+    reg load HKU\PrepWallpaper 'C:\Users\Default\NTUSER.DAT' | Out-Null
+    $defDesktop = 'Registry::HKU\PrepWallpaper\Control Panel\Desktop'
+    Set-ItemProperty -Path $defDesktop -Name 'Wallpaper'      -Value $wallDest
+    Set-ItemProperty -Path $defDesktop -Name 'WallpaperStyle' -Value '10'
+    Set-ItemProperty -Path $defDesktop -Name 'TileWallpaper'  -Value '0'
+    [GC]::Collect()
+    Start-Sleep -Seconds 1
+    reg unload HKU\PrepWallpaper | Out-Null
+
+    # Apply immediately to the current desktop session
+    try {
+        Add-Type -TypeDefinition @'
+using System;
+using System.Runtime.InteropServices;
+public class WallpaperSetter {
+    [DllImport("user32.dll", CharSet=CharSet.Auto)]
+    public static extern int SystemParametersInfo(int uAction, int uParam, string lpvParam, int fuWinIni);
+}
+'@
+    } catch {}
+    [WallpaperSetter]::SystemParametersInfo(20, 0, $wallDest, 3) | Out-Null
+    Write-Host "     Wallpaper applied: $wallDest" -ForegroundColor DarkGray
+}
+
+# =============================================================================
+# 16. Windows Update (background job -- script continues to step 17)
+# =============================================================================
+Invoke-Step '16. Windows Update' {
     Write-Host '     Installing PSWindowsUpdate module...' -ForegroundColor DarkGray
     Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
     Install-Module -Name PSWindowsUpdate -Force -AllowClobber -Scope AllUsers | Out-Null
@@ -405,9 +448,9 @@ Invoke-Step '15. Windows Update' {
 }
 
 # =============================================================================
-# 16. Dell Command Update -- Apply Driver Updates
+# 17. Dell Command Update -- Apply Driver Updates
 # =============================================================================
-Invoke-Step '16. Dell Command Update -- Apply Updates' {
+Invoke-Step '17. Dell Command Update -- Apply Updates' {
     $dcuCli = @(
         'C:\Program Files\Dell\CommandUpdate\dcu-cli.exe',
         'C:\Program Files (x86)\Dell\CommandUpdate\dcu-cli.exe'
@@ -431,9 +474,9 @@ Invoke-Step '16. Dell Command Update -- Apply Updates' {
 }
 
 # =============================================================================
-# 17. Sentinel One (installed last so it does not flag earlier install activity)
+# 18. Sentinel One (installed last so it does not flag earlier install activity)
 # =============================================================================
-Invoke-Step '17. Sentinel One' {
+Invoke-Step '18. Sentinel One' {
     if ((Get-Service 'SentinelAgent' -ErrorAction SilentlyContinue) -or (Test-AppInstalled 'Sentinel Agent')) {
         Write-Host '     Already installed: Sentinel One' -ForegroundColor DarkGray
         return
@@ -471,19 +514,19 @@ if ($null -ne $script:WUJob) {
     switch ($triggeredBy) {
         'job' {
             if ($jobState -eq 'Completed') {
-                $Results['15. Windows Update'] = 'PASSED'
+                $Results['16. Windows Update'] = 'PASSED'
                 Write-Host '  +-- [DONE] 15. Windows Update (job completed)' -ForegroundColor Green
             } else {
-                $Results['15. Windows Update'] = "FAILED: Job ended in state '$jobState'"
+                $Results['16. Windows Update'] = "FAILED: Job ended in state '$jobState'"
                 Write-Host ("  +-- [FAIL] 15. Windows Update: job state = {0}" -f $jobState) -ForegroundColor Red
             }
         }
         'reboot-flag' {
-            $Results['15. Windows Update'] = 'PASSED'
+            $Results['16. Windows Update'] = 'PASSED'
             Write-Host '  +-- [DONE] 15. Windows Update (updates installed, reboot pending)' -ForegroundColor Green
         }
         default {
-            $Results['15. Windows Update'] = 'FAILED: Timed out after 45 minutes'
+            $Results['16. Windows Update'] = 'FAILED: Timed out after 45 minutes'
             Write-Host '  +-- [FAIL] 15. Windows Update: timed out after 45 minutes' -ForegroundColor Red
         }
     }
