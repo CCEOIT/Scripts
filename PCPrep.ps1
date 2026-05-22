@@ -444,20 +444,48 @@ Invoke-Step '17. Sentinel One' {
 # -- Wait for background Windows Update job -----------------------------------
 if ($null -ne $script:WUJob) {
     Write-Host "`n  Waiting for Windows Update to finish (up to 45 min)..." -ForegroundColor Yellow
-    $completed = Wait-Job -Job $script:WUJob -Timeout 2700
-    $jobState  = $script:WUJob.State
+    Write-Host '  (will also stop waiting if Windows flags a reboot as required)' -ForegroundColor DarkGray
+
+    $wuRebootKey = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired'
+    $deadline    = (Get-Date).AddMinutes(45)
+    $triggeredBy = $null
+
+    while ($null -eq $triggeredBy -and (Get-Date) -lt $deadline) {
+        if ($script:WUJob.State -in @('Completed', 'Failed', 'Stopped')) {
+            $triggeredBy = 'job'
+        } elseif (Test-Path $wuRebootKey) {
+            $triggeredBy = 'reboot-flag'
+        } else {
+            Start-Sleep -Seconds 15
+        }
+    }
+
+    # Clean up the job whether it finished on its own or we moved on
+    if ($script:WUJob.State -eq 'Running') {
+        Stop-Job -Job $script:WUJob -ErrorAction SilentlyContinue
+    }
+    $jobState = $script:WUJob.State
     Receive-Job -Job $script:WUJob | Out-Null
     Remove-Job  -Job $script:WUJob -Force
 
-    if ($completed -and $jobState -eq 'Completed') {
-        $Results['15. Windows Update'] = 'PASSED'
-        Write-Host '  +-- [DONE] 15. Windows Update (background)' -ForegroundColor Green
-    } elseif (-not $completed) {
-        $Results['15. Windows Update'] = 'FAILED: Timed out after 45 minutes'
-        Write-Host '  +-- [FAIL] 15. Windows Update: timed out after 45 minutes' -ForegroundColor Red
-    } else {
-        $Results['15. Windows Update'] = "FAILED: Job ended in state '$jobState'"
-        Write-Host ("  +-- [FAIL] 15. Windows Update: job state = {0}" -f $jobState) -ForegroundColor Red
+    switch ($triggeredBy) {
+        'job' {
+            if ($jobState -eq 'Completed') {
+                $Results['15. Windows Update'] = 'PASSED'
+                Write-Host '  +-- [DONE] 15. Windows Update (job completed)' -ForegroundColor Green
+            } else {
+                $Results['15. Windows Update'] = "FAILED: Job ended in state '$jobState'"
+                Write-Host ("  +-- [FAIL] 15. Windows Update: job state = {0}" -f $jobState) -ForegroundColor Red
+            }
+        }
+        'reboot-flag' {
+            $Results['15. Windows Update'] = 'PASSED'
+            Write-Host '  +-- [DONE] 15. Windows Update (updates installed, reboot pending)' -ForegroundColor Green
+        }
+        default {
+            $Results['15. Windows Update'] = 'FAILED: Timed out after 45 minutes'
+            Write-Host '  +-- [FAIL] 15. Windows Update: timed out after 45 minutes' -ForegroundColor Red
+        }
     }
 }
 
