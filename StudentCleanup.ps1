@@ -430,46 +430,70 @@ foreach ($p in $recentPaths) {
 # ===========================================================================
 Write-Log "--- Configuring WiFi ---"
 
-$targetSSID = 'ONRAMP - Pathways'
+$targetSSID = 'ON-RAMP - Pathways'
+$targetKey  = 'P@thW@ys@ONRAMP!'
 
-# Get all saved wireless profiles
+# Forget every saved WiFi profile
 $allProfiles = (netsh wlan show profiles) -match '^\s*All User Profile\s*:' |
     ForEach-Object { ($_ -split ':\s*', 2)[1].Trim() }
 
 Write-Log "Found WiFi profiles: $($allProfiles -join ', ')"
 
 foreach ($profile in $allProfiles) {
-    if ($profile -like $targetSSID) {
-        Write-Log "Keeping WiFi profile: $profile"
-    } else {
-        netsh wlan delete profile name="$profile" | Out-Null
-        Write-Log "Forgot WiFi network: $profile"
-    }
+    netsh wlan delete profile name="$profile" | Out-Null
+    Write-Log "Removed WiFi profile: $profile"
 }
 
-# Verify the target profile still exists
-$profileCheck = (netsh wlan show profiles) -match '^\s*All User Profile\s*:' |
+# Write the Pathways profile XML and import it (includes passkey and auto-connect)
+$wifiXml = @"
+<?xml version="1.0"?>
+<WLANProfile xmlns="http://www.microsoft.com/networking/WLAN/profile/v1">
+    <name>$targetSSID</name>
+    <SSIDConfig>
+        <SSID>
+            <name>$targetSSID</name>
+        </SSID>
+        <nonBroadcast>false</nonBroadcast>
+    </SSIDConfig>
+    <connectionType>ESS</connectionType>
+    <connectionMode>auto</connectionMode>
+    <MSM>
+        <security>
+            <authEncryption>
+                <authentication>WPA2PSK</authentication>
+                <encryption>AES</encryption>
+                <useOneX>false</useOneX>
+            </authEncryption>
+            <sharedKey>
+                <keyType>passPhrase</keyType>
+                <protected>false</protected>
+                <keyMaterial>$targetKey</keyMaterial>
+            </sharedKey>
+        </security>
+    </MSM>
+</WLANProfile>
+"@
+
+$xmlPath = "$env:TEMP\pathways_wifi.xml"
+$wifiXml | Set-Content -Path $xmlPath -Encoding UTF8
+
+$addResult = netsh wlan add profile filename="$xmlPath" user=all
+Write-Log "WiFi profile import: $addResult"
+Remove-Item $xmlPath -Force -ErrorAction SilentlyContinue
+
+# Connect and verify
+netsh wlan connect name="$targetSSID" | Out-Null
+Start-Sleep -Seconds 8
+
+$currentSSID = (netsh wlan show interfaces) -match '^\s*SSID\s*:' |
+    Where-Object { $_ -notmatch 'BSSID' } |
     ForEach-Object { ($_ -split ':\s*', 2)[1].Trim() } |
-    Where-Object { $_ -like $targetSSID }
-if ($profileCheck) {
-    # Enable auto-connect on the target SSID
-    netsh wlan set profileparameter name="$targetSSID" connectionmode=auto | Out-Null
-    Write-Log "Auto-connect enabled for: $targetSSID"
+    Select-Object -First 1
 
-    # Connect if not already connected
-    $currentSSID = (netsh wlan show interfaces) -match '^\s*SSID\s*:' |
-        Where-Object { $_ -notmatch 'BSSID' } |
-        ForEach-Object { ($_ -split ':\s*', 2)[1].Trim() } |
-        Select-Object -First 1
-
-    if ($currentSSID -ne $targetSSID) {
-        netsh wlan connect name="$targetSSID" | Out-Null
-        Write-Log "Connecting to: $targetSSID"
-    } else {
-        Write-Log "Already connected to: $targetSSID"
-    }
+if ($currentSSID -eq $targetSSID) {
+    Write-Log "Connected to: $currentSSID"
 } else {
-    Write-Log "WARNING: Profile '$targetSSID' not found -- device may need manual WiFi setup." 'WARN'
+    Write-Log "WARNING: Expected '$targetSSID' but connected to '$currentSSID' -- check signal or passkey." 'WARN'
 }
 
 # ===========================================================================
