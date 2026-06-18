@@ -53,16 +53,8 @@ $oneDrivePaths = @(
 )
 
 Stop-AppIfRunning 'OneDrive'
-
-foreach ($odPath in $oneDrivePaths) {
-    if (Test-Path $odPath) {
-        Write-Log "Found OneDrive at $odPath - running /signout"
-        Start-Process $odPath -ArgumentList '/signout' -NoNewWindow
-        Start-Sleep -Seconds 5
-        Stop-AppIfRunning 'OneDrive'
-        break
-    }
-}
+# Note: OneDrive cannot be launched as Administrator, so we skip /signout
+# and rely entirely on wiping its settings and credentials below.
 
 # Wipe OneDrive sync settings so it can't auto-reconnect
 $oneDriveSettingsPaths = @(
@@ -472,6 +464,46 @@ if ($profileCheck) {
     }
 } else {
     Write-Log "WARNING: Profile '$targetSSID' not found -- device may need manual WiFi setup." 'WARN'
+}
+
+# ===========================================================================
+# 10. RESTORE CHROME AND EDGE DESKTOP SHORTCUTS
+# Run last so nothing can remove them after this point.
+# ===========================================================================
+Write-Log "--- Restoring Chrome and Edge desktop shortcuts ---"
+
+$wsh = New-Object -ComObject WScript.Shell
+
+$chromeShortcut = "$userProfile\Desktop\Google Chrome.lnk"
+$chromeBin      = 'C:\Program Files\Google\Chrome\Application\chrome.exe'
+if (-not (Test-Path $chromeShortcut)) {
+    if (Test-Path $chromeBin) {
+        $s = $wsh.CreateShortcut($chromeShortcut)
+        $s.TargetPath       = $chromeBin
+        $s.Description      = 'Google Chrome'
+        $s.Save()
+        Write-Log "Created Chrome shortcut on Desktop"
+    } else {
+        Write-Log "Chrome executable not found at $chromeBin - shortcut not created" 'WARN'
+    }
+} else {
+    Write-Log "Chrome shortcut already present"
+}
+
+$edgeShortcut = "$userProfile\Desktop\Microsoft Edge.lnk"
+$edgeBin      = 'C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe'
+if (-not (Test-Path $edgeShortcut)) {
+    if (Test-Path $edgeBin) {
+        $s = $wsh.CreateShortcut($edgeShortcut)
+        $s.TargetPath       = $edgeBin
+        $s.Description      = 'Microsoft Edge'
+        $s.Save()
+        Write-Log "Created Edge shortcut on Desktop"
+    } else {
+        Write-Log "Edge executable not found at $edgeBin - shortcut not created" 'WARN'
+    }
+} else {
+    Write-Log "Edge shortcut already present"
 }
 
 # ===========================================================================
