@@ -436,15 +436,21 @@ $targetSSID = 'ONRAMP - Pathways'
 $allProfiles = (netsh wlan show profiles) -match '^\s*All User Profile\s*:' |
     ForEach-Object { ($_ -split ':\s*', 2)[1].Trim() }
 
+Write-Log "Found WiFi profiles: $($allProfiles -join ', ')"
+
 foreach ($profile in $allProfiles) {
-    if ($profile -ne $targetSSID) {
+    if ($profile -like $targetSSID) {
+        Write-Log "Keeping WiFi profile: $profile"
+    } else {
         netsh wlan delete profile name="$profile" | Out-Null
         Write-Log "Forgot WiFi network: $profile"
     }
 }
 
 # Verify the target profile still exists
-$profileCheck = (netsh wlan show profiles) -match [regex]::Escape($targetSSID)
+$profileCheck = (netsh wlan show profiles) -match '^\s*All User Profile\s*:' |
+    ForEach-Object { ($_ -split ':\s*', 2)[1].Trim() } |
+    Where-Object { $_ -like $targetSSID }
 if ($profileCheck) {
     # Enable auto-connect on the target SSID
     netsh wlan set profileparameter name="$targetSSID" connectionmode=auto | Out-Null
