@@ -1,4 +1,4 @@
-#Requires -RunAsAdministrator
+﻿#Requires -RunAsAdministrator
 # CenterState CEO - Surface Go 2 Student Cleanup Script
 # Run as P2A (local admin) between student sessions.
 # Clears browsing data, resets Chrome/Edge, wipes user folders,
@@ -55,7 +55,7 @@ Stop-AppIfRunning 'OneDrive'
 
 foreach ($odPath in $oneDrivePaths) {
     if (Test-Path $odPath) {
-        Write-Log "Found OneDrive at $odPath — running /signout"
+        Write-Log "Found OneDrive at $odPath - running /signout"
         Start-Process $odPath -ArgumentList '/signout' -NoNewWindow
         Start-Sleep -Seconds 5
         Stop-AppIfRunning 'OneDrive'
@@ -172,7 +172,7 @@ try {
 # Remove Azure AD / work-school account join artifacts (dsregcmd)
 $dsregStatus = dsregcmd /status 2>&1
 if ($dsregStatus -match 'WorkplaceJoined\s*:\s*YES') {
-    Write-Log "Workplace-joined device detected — running dsregcmd /leave"
+    Write-Log "Workplace-joined device detected - running dsregcmd /leave"
     dsregcmd /leave 2>&1 | Out-Null
 }
 
@@ -264,7 +264,7 @@ if (Test-Path $chromeUserData) {
         }
     }
 } else {
-    Write-Log "Chrome user data not found at $chromeUserData — skipping."
+    Write-Log "Chrome user data not found at $chromeUserData - skipping."
 }
 
 # ===========================================================================
@@ -351,7 +351,7 @@ if (Test-Path $edgeUserData) {
         }
     }
 } else {
-    Write-Log "Edge user data not found at $edgeUserData — skipping."
+    Write-Log "Edge user data not found at $edgeUserData - skipping."
 }
 
 # ===========================================================================
