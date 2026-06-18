@@ -16,6 +16,12 @@ pause
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0StudentCleanup.ps1"
 
 echo.
-echo  Cleanup finished.  A reboot is recommended.
-echo  Press any key to close.
-pause > nul
+echo  ============================================================
+echo   Pathways Surface Wipe Complete
+echo  ============================================================
+echo.
+echo  This computer will restart in 15 seconds.
+echo  Press any key to restart immediately.
+echo.
+timeout /t 15
+shutdown /r /t 0
