@@ -434,6 +434,47 @@ foreach ($p in $recentPaths) {
 }
 
 # ===========================================================================
+# 9. WIFI - FORGET ALL NETWORKS EXCEPT "ONRAMP - Pathways", ENSURE AUTO-CONNECT
+# ===========================================================================
+Write-Log "--- Configuring WiFi ---"
+
+$targetSSID = 'ONRAMP - Pathways'
+
+# Get all saved wireless profiles
+$allProfiles = (netsh wlan show profiles) -match '^\s*All User Profile\s*:' |
+    ForEach-Object { ($_ -split ':\s*', 2)[1].Trim() }
+
+foreach ($profile in $allProfiles) {
+    if ($profile -ne $targetSSID) {
+        netsh wlan delete profile name="$profile" | Out-Null
+        Write-Log "Forgot WiFi network: $profile"
+    }
+}
+
+# Verify the target profile still exists
+$profileCheck = (netsh wlan show profiles) -match [regex]::Escape($targetSSID)
+if ($profileCheck) {
+    # Enable auto-connect on the target SSID
+    netsh wlan set profileparameter name="$targetSSID" connectionmode=auto | Out-Null
+    Write-Log "Auto-connect enabled for: $targetSSID"
+
+    # Connect if not already connected
+    $currentSSID = (netsh wlan show interfaces) -match '^\s*SSID\s*:' |
+        Where-Object { $_ -notmatch 'BSSID' } |
+        ForEach-Object { ($_ -split ':\s*', 2)[1].Trim() } |
+        Select-Object -First 1
+
+    if ($currentSSID -ne $targetSSID) {
+        netsh wlan connect name="$targetSSID" | Out-Null
+        Write-Log "Connecting to: $targetSSID"
+    } else {
+        Write-Log "Already connected to: $targetSSID"
+    }
+} else {
+    Write-Log "WARNING: Profile '$targetSSID' not found -- device may need manual WiFi setup." 'WARN'
+}
+
+# ===========================================================================
 # Done
 # ===========================================================================
 Write-Log "=== Student Cleanup Complete ==="
