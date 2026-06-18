@@ -5,8 +5,9 @@ echo  ============================================================
 echo   CenterState CEO -- Student Cleanup One-Time Install
 echo  ============================================================
 echo.
-echo  This will copy the cleanup scripts to C:\Scripts and create
-echo  an Edge shortcut on the Desktop if one does not exist.
+echo  This will copy the cleanup scripts to C:\Scripts, create
+echo  an Edge shortcut on the Desktop if one does not exist,
+echo  then launch the cleanup as Administrator.
 echo.
 echo  Run this once per machine from the flash drive.
 echo.
@@ -34,8 +35,13 @@ if not exist "C:\Users\P2A\Desktop\Microsoft Edge.lnk" (
 
 echo.
 echo  ============================================================
-echo   Install complete. You can remove the flash drive.
-echo   To run cleanup: C:\Scripts\LaunchStudentCleanup.bat
+echo   Install complete. You can now remove the flash drive.
+echo   Launching cleanup as Administrator in 5 seconds...
 echo  ============================================================
 echo.
-pause
+timeout /t 5 >nul
+
+:: Launch the cleanup script from C:\Scripts elevated and exit this window
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
+  "Start-Process 'C:\Scripts\LaunchStudentCleanup.bat' -Verb RunAs"
+exit
