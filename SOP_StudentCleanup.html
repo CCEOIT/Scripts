@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Surface Go 2 - Student Cleanup SOP</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: #222;
+    background: #fff;
+    padding: 36px 48px;
+    max-width: 820px;
+    margin: 0 auto;
+  }
+
+  header {
+    border-bottom: 3px solid #1a3a5c;
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+  }
+
+  header h1 {
+    font-size: 20px;
+    color: #1a3a5c;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  header p {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+  }
+
+  h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #1a3a5c;
+    background: #eef2f7;
+    padding: 6px 10px;
+    margin: 24px 0 12px;
+    border-left: 4px solid #1a3a5c;
+  }
+
+  .step {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    page-break-inside: avoid;
+  }
+
+  .step-number {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    background: #1a3a5c;
+    color: #fff;
+    font-size: 16px;
+    font-weight: bold;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .step-body { flex: 1; }
+
+  .step-body strong {
+    display: block;
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+
+  .step-body p { color: #444; line-height: 1.5; }
+
+  .screenshot {
+    margin-top: 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .screenshot img {
+    width: 100%;
+    display: block;
+  }
+
+  .what-it-does {
+    background: #f7f9fb;
+    border: 1px solid #d0d8e4;
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin-bottom: 24px;
+  }
+
+  .what-it-does h3 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #1a3a5c;
+    margin-bottom: 8px;
+  }
+
+  .what-it-does ul {
+    padding-left: 18px;
+    color: #444;
+    line-height: 1.8;
+  }
+
+  .note {
+    background: #fff8e1;
+    border-left: 4px solid #f5a623;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: #555;
+    margin-top: 24px;
+    border-radius: 0 4px 4px 0;
+  }
+
+  footer {
+    margin-top: 36px;
+    border-top: 1px solid #ccc;
+    padding-top: 10px;
+    font-size: 11px;
+    color: #999;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  @media print {
+    body { padding: 20px 28px; }
+    .step { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Surface Go 2 &mdash; Student Session Cleanup</h1>
+  <p>Pathways Program &nbsp;|&nbsp; CenterState CEO &nbsp;|&nbsp; Run between every student session</p>
+</header>
+
+<h2>What This Script Does</h2>
+<div class="what-it-does">
+  <h3>The script automatically clears the following from the previous student's session:</h3>
+  <ul>
+    <li>All browsing history, saved passwords, cookies, and signed-in accounts in Chrome and Edge</li>
+    <li>Everything in Documents, Downloads, Pictures, Videos, and Music</li>
+    <li>All files and shortcuts added to the Desktop</li>
+    <li>Any Microsoft account connected to the computer (OneDrive, Teams, Office)</li>
+    <li>Recently opened files list</li>
+    <li>All saved WiFi networks &mdash; reconnects to <strong>ON-RAMP - Pathways</strong> automatically</li>
+    <li>Chrome and Edge shortcuts are restored to the Desktop before reboot</li>
+  </ul>
+</div>
+
+<h2>How to Run the Cleanup</h2>
+
+<div class="step">
+  <div class="step-number">1</div>
+  <div class="step-body">
+    <strong>Open C:\Scripts in File Explorer</strong>
+    <p>Navigate to <strong>This PC &rarr; Local Disk (C:) &rarr; Scripts</strong>. You will see <em>LaunchStudentCleanup</em> and <em>StudentCleanup</em> listed here.</p>
+    <div class="screenshot">
+      <!-- INSERT SCREENSHOT 1 HERE: File Explorer showing C:\Scripts -->
+      <img src="screenshot1.png" alt="File Explorer showing C:\Scripts with LaunchStudentCleanup and StudentCleanup files">
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">2</div>
+  <div class="step-body">
+    <strong>Right-click LaunchStudentCleanup and select "Run as administrator"</strong>
+    <p>Right-click the <em>LaunchStudentCleanup</em> batch file and choose <strong>Run as administrator</strong> from the menu. If a UAC prompt appears, click <strong>Yes</strong>.</p>
+    <div class="screenshot">
+      <!-- INSERT SCREENSHOT 2 HERE: Right-click context menu showing "Run as administrator" -->
+      <img src="screenshot2.png" alt="Right-click context menu with Run as administrator highlighted">
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">3</div>
+  <div class="step-body">
+    <strong>Press any key to start the cleanup</strong>
+    <p>A black command window will open confirming what the script will do. Press any key to begin. <strong>Do not close the window</strong> while it is running.</p>
+    <div class="screenshot">
+      <!-- INSERT SCREENSHOT 3 HERE: Command prompt showing the cleanup intro screen -->
+      <img src="screenshot3.png" alt="Command prompt showing CenterState CEO Student Cleanup intro">
+    </div>
+  </div>
+</div>
+
+<div class="step">
+  <div class="step-number">4</div>
+  <div class="step-body">
+    <strong>Wait for it to finish and reboot</strong>
+    <p>The script runs automatically. When complete it will display <strong>"Pathways Surface Wipe Complete"</strong> and restart the computer after 15 seconds. The machine is then ready for the next student.</p>
+  </div>
+</div>
+
+<div class="note">
+  <strong>Note:</strong> Logs from each run are saved to <strong>C:\Scripts</strong> with a timestamp in the filename. If something looks wrong after cleanup, open the most recent log file for details.
+</div>
+
+<footer>
+  <span>CenterState CEO &mdash; Pathways Program</span>
+  <span>Surface Go 2 Student Cleanup SOP &nbsp;|&nbsp; Rev. June 2026</span>
+</footer>
+
+</body>
+</html>
