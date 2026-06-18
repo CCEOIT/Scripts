@@ -427,15 +427,9 @@ $recentPaths = @(
 )
 foreach ($p in $recentPaths) {
     if (Test-Path $p) {
-        Get-ChildItem $p -Force -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+        Get-ChildItem $p -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
         Write-Log "Cleared: $p"
     }
-}
-
-# Clear Windows Search history
-$searchHistoryPath = "$userProfile\AppData\Roaming\Microsoft\Windows\Recent\AutomaticDestinations"
-if (Test-Path $searchHistoryPath) {
-    Remove-Item "$searchHistoryPath\*" -Force -ErrorAction SilentlyContinue
 }
 
 # ===========================================================================
