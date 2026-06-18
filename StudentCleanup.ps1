@@ -12,7 +12,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Continue'
 
-$LogFile = "C:\Users\$TargetUser\Desktop\StudentCleanup_$(Get-Date -f 'yyyyMMdd_HHmmss').log"
+$LogFile = "C:\Scripts\StudentCleanup_$(Get-Date -f 'yyyyMMdd_HHmmss').log"
+if (-not (Test-Path 'C:\Scripts')) { New-Item -ItemType Directory -Path 'C:\Scripts' | Out-Null }
 
 function Write-Log {
     param([string]$Message, [string]$Level = 'INFO')
@@ -439,4 +440,4 @@ Write-Log "=== Student Cleanup Complete ==="
 Write-Log "Log saved to: $LogFile"
 Write-Host ""
 Write-Host "IMPORTANT: A reboot is recommended to fully apply account changes." -ForegroundColor Yellow
-Write-Host "Log file: $LogFile" -ForegroundColor Cyan
+Write-Host "Log file: C:\Scripts\$( Split-Path $LogFile -Leaf )" -ForegroundColor Cyan
